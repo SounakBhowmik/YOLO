@@ -42,7 +42,7 @@ import os
 
 #writer = SummaryWriter()
 
-num_epochs = 100
+num_epochs = 135
 
 train_res = {'epoch':[],
             'total_loss': [],
