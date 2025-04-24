@@ -78,6 +78,7 @@ class VOCDataset(Dataset):
             # Convert to relative center coordinates and width/height
             x_c = ((xmin + xmax) / 2) / W
             y_c = ((ymin + ymax) / 2) / H
+            
             w_box = (xmax - xmin) / W
             h_box = (ymax - ymin) / H
 
@@ -90,7 +91,8 @@ class VOCDataset(Dataset):
             transformed = self.transform(image=image, bboxes=labels[:, :4].tolist(), labels=labels[:, 4].tolist())
             image = transformed["image"]
             labels = torch.cat([torch.tensor(transformed["bboxes"]), torch.tensor(transformed["labels"]).unsqueeze(1)], dim=1)
-
+            #print(f'labels\' shape = {labels.shape}')
+            
         # Convert to YOLO grid format
         label_matrix = torch.zeros((self.S, self.S, self.B * 5 + self.C))
         for box in labels:
@@ -118,3 +120,71 @@ val_transform = A.Compose([
     A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
     ToTensorV2()
 ], bbox_params=A.BboxParams(format="yolo", label_fields=["labels"], min_visibility=0.3))
+
+#%% Download and preprocess data
+import kagglehub
+from Utils import plot_object_distribution_from_files
+import random
+from torch.utils.data import DataLoader
+
+def download_and_preprocess_data():
+    # Download latest version
+    root_data_path = kagglehub.dataset_download("gopalbhattrai/pascal-voc-2012-dataset")
+
+    train_val_data_path = f'{root_data_path}/VOC2012_train_val/VOC2012_train_val'
+    test_data_path = f'{root_data_path}/VOC2012_test/VOC2012_test'
+
+    # Plot the data distribution
+    #plot_object_distribution_from_files(train_val_data_path + '/ImageSets/Main')
+
+    image_dir =  f"{train_val_data_path}/JPEGImages"
+    annot_dir =  f"{train_val_data_path}/Annotations"
+    split_file = f"{train_val_data_path}/ImageSets/Main/train.txt"
+    
+    # Paths to your dataset split files
+    train_split_file = f"{train_val_data_path}/ImageSets/Main/train.txt"
+    val_split_file = f"{train_val_data_path}/ImageSets/Main/val.txt"
+
+
+    # Read file paths
+    with open(train_split_file, "r") as f:
+        train_files = f.read().splitlines()
+
+    with open(val_split_file, "r") as f:
+        val_files = f.read().splitlines()
+
+
+    # Randomly select 75% of val files to move to train
+    num_to_move = int(0.75 * len(val_files))
+    selected_files = random.sample(val_files, num_to_move)
+
+    # Update train and val lists
+    train_files.extend(selected_files)
+    val_files = [f for f in val_files if f not in selected_files]
+
+    # Save updated splits
+    train_split_file = "train.txt"
+    val_split_file   = "val.txt"
+
+    with open(train_split_file, "w") as f:
+        f.write("\n".join(train_files))
+
+    with open(val_split_file, "w") as f:
+        f.write("\n".join(val_files))
+
+    print(f"Moved {num_to_move} images from validation to training set.")
+    print(f"New train size: {len(train_files)}, New val size: {len(val_files)}")
+    
+    # Define dataset paths
+    image_dir = f"{train_val_data_path}/JPEGImages"
+    annot_dir = f"{train_val_data_path}/Annotations"
+
+    # Create dataset and dataloader
+    train_dataset = VOCDataset(image_dir, annot_dir, train_split_file, transform=train_transform)
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, pin_memory=True, num_workers=6)
+
+    val_dataset = VOCDataset(image_dir, annot_dir, val_split_file, transform=val_transform)
+    val_loader = DataLoader(val_dataset, batch_size=64, shuffle=True, pin_memory=True, num_workers=6)
+    
+    return train_loader, val_loader
+
