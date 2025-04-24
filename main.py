@@ -1,65 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import kagglehub
-from Utils import plot_object_distribution_from_files, YOLOloss
+from Utils import plot_object_distribution_from_files, YOLOloss, set_lr
 import torch.optim as optim
 from tqdm import tqdm
-from torch.utils.data import DataLoader
-import numpy as np
-import random
 import torch
 from Models import FastYOLO_mobile01
-from Data import VOCDataset, train_transform, val_transform
-
-# Download latest version
-root_data_path = kagglehub.dataset_download("gopalbhattrai/pascal-voc-2012-dataset")
-
-train_val_data_path = f'{root_data_path}/VOC2012_train_val/VOC2012_train_val'
-test_data_path = f'{root_data_path}/VOC2012_test/VOC2012_test'
-
-# Plot the data distribution
-plot_object_distribution_from_files(train_val_data_path + '/ImageSets/Main')
-
-image_dir =  f"{train_val_data_path}/JPEGImages"
-annot_dir =  f"{train_val_data_path}/Annotations"
-split_file = f"{train_val_data_path}/ImageSets/Main/train.txt"
-
-#%% Build the training pipeline
-
-# Paths to your dataset split files
-train_split_file = f"{train_val_data_path}/ImageSets/Main/train.txt"
-val_split_file = f"{train_val_data_path}/ImageSets/Main/val.txt"
-
-
-# Read file paths
-with open(train_split_file, "r") as f:
-    train_files = f.read().splitlines()
-
-with open(val_split_file, "r") as f:
-    val_files = f.read().splitlines()
-
-
-# Randomly select 75% of val files to move to train
-num_to_move = int(0.75 * len(val_files))
-selected_files = random.sample(val_files, num_to_move)
-
-# Update train and val lists
-train_files.extend(selected_files)
-val_files = [f for f in val_files if f not in selected_files]
-
-# Save updated splits
-train_split_file = "train.txt"
-val_split_file   = "val.txt"
-
-with open(train_split_file, "w") as f:
-    f.write("\n".join(train_files))
-
-with open(val_split_file, "w") as f:
-    f.write("\n".join(val_files))
-
-print(f"Moved {num_to_move} images from validation to training set.")
-print(f"New train size: {len(train_files)}, New val size: {len(val_files)}")
-
+from Data import download_and_preprocess_data
 
 
 #%%
@@ -69,26 +16,15 @@ model.to(device)
 
 # Your model should have been loaded already, don't instantiate it again here, it breaks the kernel for some reason I am unable to understand
 # Optimizer and scheduler
-optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=5e-4)
+optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=5e-4)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=15, factor=0.5, verbose=True)
 
 
 # loss function instantiate
 loss_fn = YOLOloss()
 
-# Define dataset paths
-image_dir = f"{train_val_data_path}/JPEGImages"
-annot_dir = f"{train_val_data_path}/Annotations"
-train_split_file = train_split_file
-val_split_file = val_split_file
 
-# Create dataset and dataloader
-train_dataset = VOCDataset(image_dir, annot_dir, train_split_file, transform=train_transform)
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, pin_memory=True)
-
-val_dataset = VOCDataset(image_dir, annot_dir, val_split_file, transform=val_transform)
-val_loader = DataLoader(val_dataset, batch_size=32, shuffle=True, pin_memory=True)
-
+train_loader, val_loader = download_and_preprocess_data()
 
 
 # Save results function
@@ -152,8 +88,8 @@ for epoch in range(num_epochs):
             if(k != 'epoch'):
                 val_res[k].append(val_loss[i-1].item())
 
-    scheduler.step(val_loss[0])
-    print(f"Epoch [{epoch+1}/{num_epochs}], Train Loss: {train_loss[0]:.4f}, Val Loss: {val_loss[0]:.4f}")
+    lr = set_lr(optimizer, epoch)
+    print(f"lr = {lr}, Epoch [{epoch+1}/{num_epochs}], Train Loss: {train_loss[0]:.4f}, Val Loss: {val_loss[0]:.4f}")
 
 # writer.flush()
 # writer.close()

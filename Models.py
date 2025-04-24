@@ -17,6 +17,7 @@ mobilenet_v3 = mobilenet_v3_large(weights=MobileNet_V3_Large_Weights.IMAGENET1K_
 
 import torch
 import torch.nn as nn
+
 '''
 class SimpleCNN(nn.Module):
     def __init__(self, *args, **kwargs) -> None:
@@ -66,30 +67,43 @@ class FastYOLO_mobile(nn.Module):
 class FastYOLO_mobile01(nn.Module):
     def __init__(self, *args, **kwargs) -> None:
         super(FastYOLO_mobile01, self).__init__(*args, **kwargs)
-        self.model = mobilenet_v3_large(weights=MobileNet_V3_Large_Weights.IMAGENET1K_V2)
-        for p in self.model.features[:13].parameters():
-            p.requires_grad = False
-        '''
+        self.model = mobilenet_v3_large(weights=MobileNet_V3_Large_Weights.IMAGENET1K_V2).features
+        self.l_relu = nn.LeakyReLU(0.1)
+        self.dropout = nn.Dropout(0.5)
+        
         for p in self.model.parameters():
             p.requires_grad = False
-
+            
+            
         self.head = nn.Sequential(
-            nn.Linear(960, 1280),
-            nn.Hardswish(),
-            nn.Dropout(p=.02, inplace=True),
-            nn.Linear(1280, 25*7*7)
-        )
-        '''
-        self.head = nn.Sequential(
-            nn.Conv2d(960, 1280, 2, 2),  # 960 → 1280
-            nn.BatchNorm2d(1280),
-            nn.Hardswish(),
-            nn.AdaptiveAvgPool2d(1),  # Pool down to (1,1,1280)
+            nn.Conv2d(960, 1024, 1, 1),  # 1024, 14, 14
+            nn.BatchNorm2d(1024),
+            self.l_relu,
+            
+            nn.Conv2d(1024, 1024, 3,1), # 1024, 12, 12
+            nn.BatchNorm2d(1024),
+            self.l_relu,
+            
+            nn.Conv2d(1024, 1024, 3,1), # 1024, 10, 10
+            nn.BatchNorm2d(1024),
+            self.l_relu,
+            
+            nn.Conv2d(1024, 1024, 5,1), # 1024, 6, 6
+            nn.BatchNorm2d(1024),
+            self.l_relu,
+            
+            
             nn.Flatten(),  # Convert (B, 1280, 1, 1) → (B, 1280)
-            nn.Linear(1280, 25*7*7)
+            nn.Linear(1024*6*6, 4096),
+            self.l_relu,
+            self.dropout,
+            
+            nn.Linear(4096, 25*7*7),
+            nn.Sigmoid()
         )
+        
     def forward(self, x):
-        x = self.model.features(x)
+        x = self.model(x)
         x = self.head(x)
         x = torch.reshape(x, (-1, 7, 7, 25))
 

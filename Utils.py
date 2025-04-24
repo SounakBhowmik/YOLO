@@ -35,29 +35,32 @@ class_map = [
 
 #%%
 class YOLOloss(nn.Module):
-    def __init__(self, lambda_box=5, lambda_obj = 8.5, lambda_noobj = 1.5, lambda_class=10):
+    def __init__(self, lamda_coordinate=5, lamda_noobj = 0.5):
         super().__init__()
         self.mse = nn.MSELoss(reduction='sum')
-        self.bce = nn.BCEWithLogitsLoss(reduction='sum')
+        #self.bce = nn.BCEWithLogitsLoss(reduction='sum')
 
-        self.lambda_box = lambda_box
-        self.lambda_noobj = lambda_noobj
-        self.lambda_obj = lambda_obj
-        self.lambda_class = lambda_class
+        self.lamda_coordinate = lamda_coordinate
+        self.lamda_noobj = lamda_noobj
+        self.noise = 1e-6
 
     def forward(self, prediction: torch.tensor, targets: torch.tensor):
-        #print(targets[...,4])
-        objmask = targets[...,4] ==   1   # cells with object
-        noobjmask = targets[...,4] == 0     # empty cells
-        #print(noobjmask)
-        loss_box = self.lambda_box * (
-            self.mse(prediction[objmask][..., :2], targets[objmask][..., :2])  + #  (x, y)
-            self.mse(torch.sqrt(torch.abs(prediction[objmask][..., 2:4] + 1e-6)), torch.sqrt(targets[objmask][..., 2:4]))
+        # Assuming prediction is a (-1, 7, 7, 5 + 20) dimensional array
+        objmask = targets[:, :, :, 4] ==   1   # cells with object
+        noobjmask = targets[:, :, :, 4] == 0     # empty cells
+        #print(prediction[objmask].shape)
+        loss_box = self.lamda_coordinate*(
+            
+            self.mse(prediction[objmask][..., :2], targets[objmask][..., :2])
+            + self.mse(torch.sqrt(prediction[objmask][..., 2:4]+self.noise), torch.sqrt(targets[objmask][..., 2:4]))
+            
         )
 
-        loss_obj = self.lambda_obj * self.bce(prediction[objmask][...,4], targets[objmask][...,4])
-        loss_noobj = self.lambda_noobj * self.bce(prediction[noobjmask][...,4], targets[noobjmask][...,4])
-        loss_class = self.lambda_class * self.bce(prediction[objmask][...,5:], targets[objmask][...,5:])
+        loss_obj = self.mse(prediction[objmask][...,4], targets[objmask][...,4])
+        
+        loss_noobj = self.lamda_noobj * self.mse(prediction[noobjmask][...,4], targets[noobjmask][...,4])
+        
+        loss_class = self.mse(prediction[objmask][...,5:], targets[objmask][...,5:])
 
         loss_obj_noobj = loss_obj + loss_noobj
         total_loss = loss_box + loss_obj_noobj + loss_class
@@ -67,10 +70,31 @@ class YOLOloss(nn.Module):
 '''
 # test-case
 preds = torch.rand(1,7,7,25)
-target = torch.vstack((torch.tensor([[0.5, 0.5, 0.1, 0.2, 1, 0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0]]), torch.zeros(48,25))).reshape(1,7,7,25)
+target = torch.vstack((torch.tensor([[0.5, 0.5, 0.1, 0.2, 1, 0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],[0.6, 0.7, 0.1, 0.2, 1, 0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]), torch.zeros(47,25))).reshape(1,7,7,25)
 loss = YOLOloss()
 print(loss(preds, target))
 '''
+#%% Custom lr_scheduler
+import math
+
+def set_lr(optimizer, epoch):
+    # increase the lr from 1e-3 to 1e-2 in a scope of 15 epochs, then continue with 1e-2 for 60 epochs, 
+    cur_lr = optimizer.param_groups[0]['lr']
+
+    if(epoch<15):
+        cur_lr *= math.pow(10, 1/15)
+        
+    elif(epoch>=75):
+        if(epoch<105):
+            cur_lr = 1e-3
+        else:
+            cur_lr = 1e-4
+    
+    optimizer.param_groups[0]['lr'] = cur_lr    
+    return cur_lr
+
+
+
 #%%
 
 import os
