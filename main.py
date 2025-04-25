@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import kagglehub
-from Utils import plot_object_distribution_from_files, YOLOloss, set_lr
+from Utils import plot_object_distribution_from_files, YOLOloss, set_lr, compute_map
 import torch.optim as optim
 from tqdm import tqdm
 import torch
@@ -40,7 +40,7 @@ import os
 
 
 
-#writer = SummaryWriter()
+writer = SummaryWriter()
 
 num_epochs = 150
 
@@ -61,10 +61,10 @@ for epoch in range(num_epochs):
     train_loss = train_fn(model, train_loader, optimizer, loss_fn, device)
 
     # Add to tensorboard
-    # writer.add_scalars('Train', {'total_loss': train_loss[0],
-    #                             'loss_box': train_loss[1],
-    #                             'loss_obj_noobj': train_loss[2],
-    #                             'loss_class': train_loss[3]}, epoch)
+    writer.add_scalars('Train', {'total_loss': train_loss[0],
+                                'loss_box': train_loss[1],
+                                'loss_obj_noobj': train_loss[2],
+                                'loss_class': train_loss[3]}, epoch)
 
     # Add the log values to the dictionary, later we shall convert it into a csv file
     train_res['epoch'].append(epoch)
@@ -72,15 +72,15 @@ for epoch in range(num_epochs):
         if(k != 'epoch'):
             train_res[k].append(train_loss[i-1].item())
 
-    if((epoch+1)%5 == 0):
+    if((epoch)%5 == 0):
         print('Validation -->')
         val_loss = validate_fn(model, val_loader, loss_fn, device)
 
-        # Add to tensorboard
-        # writer.add_scalars('Val', {'total_loss': val_loss[0],
-        #                             'loss_box': val_loss[1],
-        #                             'loss_obj_noobj': val_loss[2],
-        #                             'loss_class': val_loss[3]}, epoch)
+        #Add to tensorboard
+        writer.add_scalars('Val', {'total_loss': val_loss[0],
+                                    'loss_box': val_loss[1],
+                                    'loss_obj_noobj': val_loss[2],
+                                    'loss_class': val_loss[3]}, epoch)
 
         # Add the val log values to the dictionary, later we shall convert it into a csv file
         val_res['epoch'].append(epoch)
@@ -93,8 +93,8 @@ for epoch in range(num_epochs):
     #lr = set_lr(optimizer, epoch)
     print(f"lr = {scheduler.get_last_lr()}, Epoch [{epoch+1}/{num_epochs}], Train Loss: {train_loss[0]:.4f}, Val Loss: {val_loss[0]:.4f}")
 
-# writer.flush()
-# writer.close()
+writer.flush()
+writer.close()
 
 
 # Save results
@@ -109,6 +109,21 @@ write_results(result = val_res, results_path = results_path, model_name  = model
 # Save model
 model_path = os.path.join(models_path, model_name) + '.pth'
 torch.save(model.state_dict(), model_path)
+
+
+#%%
+# Compute map
+# Load model
+models_path = 'Replace with your model path'#'/content/drive/MyDrive/YOLO/models'
+model_name = 'mobilenet_v3'
+model_path = os.path.join(models_path, model_name)+'.pth'
+model.load_state_dict(torch.load(model_path))
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+model.to(device)
+model.eval()
+
+compute_map(model, val_loader, device, iou_threshold=0.5)
 
 
 

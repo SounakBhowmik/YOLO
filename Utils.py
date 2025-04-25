@@ -24,6 +24,9 @@ import matplotlib.pyplot as plt
 import csv
 from tqdm import tqdm
 
+from sklearn.metrics import average_precision_score
+from torch.utils.data import DataLoader
+
 
 #%%
 class_map = [
@@ -74,6 +77,68 @@ target = torch.vstack((torch.tensor([[0.5, 0.5, 0.1, 0.2, 1, 0,0,0,0,0,0,0,1,0,0
 loss = YOLOloss()
 print(loss(preds, target))
 '''
+#%%
+
+def compute_map(model, test_loader, device, iou_threshold=0.5):
+    """
+    Compute the mean Average Precision (mAP) for an object detection model.
+
+    Parameters:
+    - model: The trained object detection model.
+    - test_loader: A DataLoader containing test images and ground truth labels.
+    - iou_threshold: The IoU threshold to consider a prediction as a true positive.
+
+    Returns:
+    - mAP: Mean Average Precision score.
+    """
+    all_true_labels = []
+    all_pred_scores = []
+    all_pred_labels = []
+
+    model.eval()  # Set model to evaluation mode
+
+    with torch.no_grad():
+        for images, targets in tqdm(test_loader):
+            images, targets = images.to(device), targets.to(device) #[t.to(device) for t in targets]
+            outputs = model(images)
+            for i in range(len(outputs)):
+
+                true_boxes = targets[i, :4].cpu().numpy()  # Ground truth boxes
+                true_labels = targets[i, 5:].cpu().numpy()  # Ground truth labels
+
+                pred_boxes = outputs[i, :4].cpu().numpy()  # Predicted boxes
+                pred_scores = outputs[i, 4].cpu().numpy()  # Prediction confidence scores
+                pred_labels = outputs[i, 5:].cpu().numpy()  # Predicted labels
+
+                all_true_labels.append(true_labels)
+                all_pred_labels.append(pred_labels)
+                all_pred_scores.append(pred_scores)
+
+    # Compute average precision for each class
+    ap_per_class = []
+    unique_classes = np.unique(np.concatenate(all_true_labels))
+
+    for c in unique_classes:
+        true_class = np.array([1 if c in labels else 0 for labels in all_true_labels])
+        pred_class = np.array([scores[np.where(labels == c)[0]].max() if c in labels else 0
+                               for scores, labels in zip(all_pred_scores, all_pred_labels)])
+
+        if np.any(true_class):  # Ensure the class exists in the dataset
+            ap = average_precision_score(true_class, pred_class)
+            ap_per_class.append(ap)
+
+    return np.mean(ap_per_class) if ap_per_class else 0.0
+
+
+
+
+
+
+
+
+
+
+
 #%% Custom lr_scheduler
 import math
 
@@ -229,13 +294,6 @@ def visualize_bboxes(image, label_matrix):
     plt.axis("off")
     plt.show()
 
-'''
-# testing
-test_batch_image, test_batch_labels = next(iter(train_loader))
-for img, label in zip(test_batch_image, test_batch_labels):
-    visualize_bboxes(img.permute(1, 2, 0).numpy(), label)
-
-'''
 
 #%%
 

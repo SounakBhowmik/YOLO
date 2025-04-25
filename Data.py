@@ -115,6 +115,80 @@ train_transform = A.Compose([
     ToTensorV2()
 ], bbox_params=A.BboxParams(format="yolo", label_fields=["labels"], min_visibility=0.3))
 
+
+train_transform2 = A.Compose([
+        # Basic spatial transforms
+        A.LongestMaxSize(max_size=448),  # Resize maintaining aspect ratio
+        A.PadIfNeeded(
+            min_height=448,
+            min_width=448,
+            border_mode=cv2.BORDER_CONSTANT,
+            value=(114, 114, 114)  # YOLO-style padding (gray)
+        ),
+        
+        # Color transforms
+        A.ColorJitter(
+            brightness=0.2,
+            contrast=0.2,
+            saturation=0.2,
+            hue=0.1,
+            p=0.5
+        ),
+        A.ToGray(p=0.05),  # Small chance to convert to grayscale
+        
+        # Blur/noise
+        A.OneOf([
+            A.MotionBlur(p=0.2),
+            A.MedianBlur(blur_limit=3, p=0.1),
+            A.Blur(blur_limit=3, p=0.1),
+        ], p=0.3),
+        A.GaussNoise(var_limit=(10.0, 50.0), p=0.2),
+        
+        # Weather effects
+        A.RandomFog(fog_coef_lower=0.1, fog_coef_upper=0.3, p=0.1),
+        A.RandomSunFlare(src_radius=100, p=0.1),
+        
+        # Geometric transforms
+        A.HorizontalFlip(p=0.5),
+        A.VerticalFlip(p=0.1),  # Less common than horizontal
+        A.RandomRotate90(p=0.3),
+        A.ShiftScaleRotate(
+            shift_limit=0.05,
+            scale_limit=0.1,
+            rotate_limit=10,
+            border_mode=cv2.BORDER_CONSTANT,
+            value=(114, 114, 114),
+            p=0.5
+        ),
+        
+        # Advanced augmentations
+        A.CoarseDropout(
+            max_holes=8,
+            max_height=32,
+            max_width=32,
+            min_holes=1,
+            min_height=8,
+            min_width=8,
+            fill_value=(114, 114, 114),
+            p=0.3
+        ),
+        A.RandomGridShuffle(grid=(3, 3), p=0.1),
+        
+        # Final processing
+        A.Normalize(
+            mean=[0.485, 0.456, 0.406],  # ImageNet mean
+            std=[0.229, 0.224, 0.225],    # ImageNet std
+            max_pixel_value=255.0
+        ),
+        ToTensorV2()  # Convert to PyTorch tensor
+    ], bbox_params=A.BboxParams(
+        format='yolo',  # Use 'yolo' format (normalized cx, cy, w, h)
+        min_visibility=0.2,  # Discard boxes with <20% visibility after transform
+        label_fields=["labels"]  # Required for class labels
+    ))
+
+
+
 val_transform = A.Compose([
     A.Resize(448, 448),
     A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
@@ -180,7 +254,7 @@ def download_and_preprocess_data():
     annot_dir = f"{train_val_data_path}/Annotations"
 
     # Create dataset and dataloader
-    train_dataset = VOCDataset(image_dir, annot_dir, train_split_file, transform=train_transform)
+    train_dataset = VOCDataset(image_dir, annot_dir, train_split_file, transform=train_transform2)
     train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, pin_memory=True, num_workers=6)
 
     val_dataset = VOCDataset(image_dir, annot_dir, val_split_file, transform=val_transform)
