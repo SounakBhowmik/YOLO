@@ -17,7 +17,7 @@ model.to(device)
 # Your model should have been loaded already, don't instantiate it again here, it breaks the kernel for some reason I am unable to understand
 # Optimizer and scheduler
 optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=5e-4)
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=15, factor=0.5, verbose=True)
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
 
 
 # loss function instantiate
@@ -28,7 +28,7 @@ train_loader, val_loader = download_and_preprocess_data()
 
 
 # Save results function
-results_path = '/content/drive/MyDrive/YOLO_Results'
+results_path = 'YOLO_Results'
 model_name = 'mobilenet_v3_3' # With the dense layers on the head
 
 #%%
@@ -42,7 +42,7 @@ import os
 
 #writer = SummaryWriter()
 
-num_epochs = 100
+num_epochs = 150
 
 train_res = {'epoch':[],
             'total_loss': [],
@@ -72,7 +72,7 @@ for epoch in range(num_epochs):
         if(k != 'epoch'):
             train_res[k].append(train_loss[i-1].item())
 
-    if(epoch%5 == 0):
+    if((epoch+1)%5 == 0):
         print('Validation -->')
         val_loss = validate_fn(model, val_loader, loss_fn, device)
 
@@ -87,17 +87,19 @@ for epoch in range(num_epochs):
         for k, i in zip(list(val_res.keys()), range(5)):
             if(k != 'epoch'):
                 val_res[k].append(val_loss[i-1].item())
-
-    lr = set_lr(optimizer, epoch)
-    print(f"lr = {lr}, Epoch [{epoch+1}/{num_epochs}], Train Loss: {train_loss[0]:.4f}, Val Loss: {val_loss[0]:.4f}")
+                
+    scheduler.step()
+    
+    #lr = set_lr(optimizer, epoch)
+    print(f"lr = {scheduler.get_last_lr()}, Epoch [{epoch+1}/{num_epochs}], Train Loss: {train_loss[0]:.4f}, Val Loss: {val_loss[0]:.4f}")
 
 # writer.flush()
 # writer.close()
 
 
 # Save results
-results_path = '/content/drive/MyDrive/YOLO/results'
-models_path = '/content/drive/MyDrive/YOLO/models'
+results_path = 'results'
+models_path = 'models'
 
 model_name = 'mobilenet_v3_3'
 

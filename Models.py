@@ -71,7 +71,8 @@ class FastYOLO_mobile01(nn.Module):
         self.l_relu = nn.LeakyReLU(0.1)
         self.dropout = nn.Dropout(0.5)
         
-        for p in self.model.parameters():
+        
+        for p in self.model[:13].parameters():
             p.requires_grad = False
             
             
@@ -80,21 +81,22 @@ class FastYOLO_mobile01(nn.Module):
             nn.BatchNorm2d(1024),
             self.l_relu,
             
-            nn.Conv2d(1024, 1024, 3,1), # 1024, 12, 12
+            nn.Conv2d(1024, 1024, 1,1), # 1024, 12, 12
             nn.BatchNorm2d(1024),
             self.l_relu,
             
-            nn.Conv2d(1024, 1024, 3,1), # 1024, 10, 10
+            nn.Conv2d(1024, 1024, 1,1), # 1024, 10, 10
             nn.BatchNorm2d(1024),
             self.l_relu,
+            self.dropout,
             
-            nn.Conv2d(1024, 1024, 5,1), # 1024, 6, 6
+            nn.Conv2d(1024, 1024, 2,2), # 1024, 6, 6
             nn.BatchNorm2d(1024),
             self.l_relu,
-            
+            self.dropout,
             
             nn.Flatten(),  # Convert (B, 1280, 1, 1) → (B, 1280)
-            nn.Linear(1024*6*6, 4096),
+            nn.Linear(1024*7*7, 4096),
             self.l_relu,
             self.dropout,
             
@@ -188,7 +190,7 @@ model.to(device)
 
 op = model(torch.rand(1, 3, 448, 448).to(device))
 print(f'o/p shape is {op.shape} and the expected shape is {output_dim}')
-
 '''
+
 
 
