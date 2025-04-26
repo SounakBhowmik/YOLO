@@ -72,7 +72,7 @@ class FastYOLO_mobile01(nn.Module):
         self.dropout = nn.Dropout(0.5)
         
         
-        for p in self.model[:13].parameters():
+        for p in self.model[:8].parameters():
             p.requires_grad = False
             
             

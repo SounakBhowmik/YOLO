@@ -1,0 +1,2 @@
+# V-2 is 13 layers of Mobilenet un-frozen
+# V-3 is 8 layers unfrozen, along with increased coarsedropout in augmentation .
