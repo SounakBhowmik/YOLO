@@ -112,6 +112,7 @@ torch.save(model.state_dict(), model_path)
 
 
 #%%
+'''
 # Compute map
 # Load model
 models_path = 'Replace with your model path'#'/content/drive/MyDrive/YOLO/models'
@@ -124,7 +125,7 @@ model.to(device)
 model.eval()
 
 compute_map(model, val_loader, device, iou_threshold=0.5)
-
+'''
 
 
 

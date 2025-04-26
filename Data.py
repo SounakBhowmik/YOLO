@@ -129,21 +129,18 @@ train_transform = A.Compose([
     ], p=0.3),
     
     A.CoarseDropout(
-        max_holes=8,
-        max_height=32,
-        max_width=32,
-        min_holes=1,
-        min_height=8,
-        min_width=8,
-        fill_value=(114, 114, 114),
-        p=0.4
+        num_holes_range=(3, 12),
+        hole_height_range=(8, 64),
+        hole_width_range=(8, 64),
+        fill="random_uniform",
+        p=0.7
     ),
     
     A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
     ToTensorV2()
 ], bbox_params=A.BboxParams(format="yolo", label_fields=["labels"], min_visibility=0.3))
 
-
+'''
 train_transform2 = A.Compose([
         # Basic spatial transforms
         A.LongestMaxSize(max_size=448),  # Resize maintaining aspect ratio
@@ -215,7 +212,7 @@ train_transform2 = A.Compose([
         label_fields=["labels"]  # Required for class labels
     ))
 
-
+'''
 
 val_transform = A.Compose([
     A.Resize(448, 448),
