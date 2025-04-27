@@ -5,19 +5,19 @@ from Utils import plot_object_distribution_from_files, YOLOloss, set_lr, compute
 import torch.optim as optim
 from tqdm import tqdm
 import torch
-from Models import FastYOLO_mobile01
+from Models import FastYOLO_mobile01, FastYOLO_resnet
 from Data import download_and_preprocess_data
 
 
 #%%
-model = FastYOLO_mobile01()
+model = FastYOLO_resnet()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model.to(device)
 
 # Your model should have been loaded already, don't instantiate it again here, it breaks the kernel for some reason I am unable to understand
 # Optimizer and scheduler
 optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=5e-4)
-scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.7)
 
 
 # loss function instantiate
@@ -26,19 +26,11 @@ loss_fn = YOLOloss()
 
 train_loader, val_loader = download_and_preprocess_data()
 
-
-# Save results function
-results_path = 'YOLO_Results'
-model_name = 'mobilenet_v3_3' # With the dense layers on the head
-
 #%%
 from Utils import train_fn, validate_fn, write_results
 import torch
-import tensorflow as tf
 from torch.utils.tensorboard import SummaryWriter
 import os
-
-
 
 writer = SummaryWriter()
 
@@ -101,7 +93,7 @@ writer.close()
 results_path = 'results'
 models_path = 'models'
 
-model_name = 'mobilenet_v3_3'
+model_name = 'FastYOLO_resnet'
 
 write_results(result = train_res, results_path = results_path, model_name  = model_name, suffix = 'train')
 write_results(result = val_res, results_path = results_path, model_name  = model_name, suffix = 'val')

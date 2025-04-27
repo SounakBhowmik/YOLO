@@ -162,22 +162,56 @@ class FastYOLO_vit(nn.Module):
 
         return x
 
-
+'''
 class FastYOLO_resnet(nn.Module):
     def __init__(self, *args, **kwargs) -> None:
         super(FastYOLO_resnet, self).__init__(*args, **kwargs)
-        self.model = resnet50(weights=ResNet50_Weights.DEFAULT)
-
-        for p in self.model.parameters():
+        pretrained_resnet = resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
+        self.model = nn.Sequential(*list(pretrained_resnet.children()))[:-2] # New model with resnet pretrained weights
+        
+        self.l_relu = nn.LeakyReLU(0.1)
+        self.dropout = nn.Dropout(0.5)
+        
+        # Freezing the entire model except for the last 3 layers
+        for p in self.model[:-3].parameters():
             p.requires_grad = False
+        
+        self.head = nn.Sequential(
+                nn.Conv2d(2048, 1024, 1, 1),  # 1024, 14, 14
+                nn.BatchNorm2d(1024),
+                self.l_relu,
+                
+                # nn.Conv2d(1024, 1024, 1,1), # 1024, 12, 12
+                # nn.BatchNorm2d(1024),
+                # self.l_relu,
+                
+                # nn.Conv2d(1024, 1024, 1,1), # 1024, 10, 10
+                # nn.BatchNorm2d(1024),
+                # self.l_relu,
+                # self.dropout,
+                
+                nn.Conv2d(1024, 1024, 2,2), # 1024, 7, 7
+                nn.BatchNorm2d(1024),
+                self.l_relu,
+                self.dropout,
+                
+                nn.Flatten(),  # Convert (B, 1280, 1, 1) → (B, 1280)
+                nn.Linear(1024*7*7, 4096),
+                self.l_relu,
+                self.dropout,
+                
+                nn.Linear(4096, 25*7*7),
+                nn.Sigmoid()
+            )
 
-        self.model.fc = nn.Linear(2048, 25*7*7)
+        #self.model.fc = nn.Linear(2048, 25*7*7)
     def forward(self, x):
         x = self.model(x)
+        x = self.head(x)
         x = torch.reshape(x, (-1, 7, 7, 25))
 
         return x
-'''
+
 
 '''
 # Test with dummy tensors to check if you get the expected dimensions
