@@ -72,7 +72,7 @@ class FastYOLO_mobile01(nn.Module):
         self.dropout = nn.Dropout(0.5)
         
         
-        for p in self.model[:8].parameters():
+        for p in self.model.parameters():
             p.requires_grad = False
             
             
@@ -80,10 +80,12 @@ class FastYOLO_mobile01(nn.Module):
             nn.Conv2d(960, 1024, 1, 1),  # 1024, 14, 14
             nn.BatchNorm2d(1024),
             self.l_relu,
+            self.dropout,
             
             nn.Conv2d(1024, 1024, 1,1), # 1024, 12, 12
             nn.BatchNorm2d(1024),
             self.l_relu,
+            self.dropout,
             
             nn.Conv2d(1024, 1024, 1,1), # 1024, 10, 10
             nn.BatchNorm2d(1024),
