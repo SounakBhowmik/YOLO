@@ -10,7 +10,7 @@ from Data import download_and_preprocess_data
 
 
 #%%
-model = FastYOLO_resnet()
+model = FastYOLO_mobile01()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model.to(device)
 
@@ -93,7 +93,7 @@ writer.close()
 results_path = 'results'
 models_path = 'models'
 
-model_name = 'FastYOLO_resnet'
+model_name = 'FastYOLO_mobile02'
 
 write_results(result = train_res, results_path = results_path, model_name  = model_name, suffix = 'train')
 write_results(result = val_res, results_path = results_path, model_name  = model_name, suffix = 'val')
