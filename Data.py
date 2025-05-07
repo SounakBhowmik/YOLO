@@ -232,6 +232,7 @@ def download_and_preprocess_data():
 
     train_val_data_path = f'{root_data_path}/VOC2012_train_val/VOC2012_train_val'
     test_data_path = f'{root_data_path}/VOC2012_test/VOC2012_test'
+    #print(train_val_data_path)
 
     # Plot the data distribution
     #plot_object_distribution_from_files(train_val_data_path + '/ImageSets/Main')

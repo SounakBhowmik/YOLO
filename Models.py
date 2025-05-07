@@ -72,7 +72,7 @@ class FastYOLO_mobile01(nn.Module):
         self.dropout = nn.Dropout(0.5)
         
         
-        for p in self.model.parameters():
+        for p in self.model[:8].parameters():
             p.requires_grad = False
             
             
@@ -80,12 +80,10 @@ class FastYOLO_mobile01(nn.Module):
             nn.Conv2d(960, 1024, 1, 1),  # 1024, 14, 14
             nn.BatchNorm2d(1024),
             self.l_relu,
-            self.dropout,
             
             nn.Conv2d(1024, 1024, 1,1), # 1024, 12, 12
             nn.BatchNorm2d(1024),
             self.l_relu,
-            self.dropout,
             
             nn.Conv2d(1024, 1024, 1,1), # 1024, 10, 10
             nn.BatchNorm2d(1024),
@@ -209,8 +207,7 @@ class FastYOLO_resnet(nn.Module):
         #self.model.fc = nn.Linear(2048, 25*7*7)
     def forward(self, x):
         x = self.model(x)
-        x = self.head(x)
-        x = torch.reshape(x, (-1, 7, 7, 25))
+        #x = torch.reshape(x, (-1, 7, 7, 25))
 
         return x
 
