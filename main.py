@@ -103,22 +103,6 @@ model_path = os.path.join(models_path, model_name) + '.pth'
 torch.save(model.state_dict(), model_path)
 
 
-#%%
-'''
-# Compute map
-# Load model
-models_path = 'Replace with your model path'#'/content/drive/MyDrive/YOLO/models'
-model_name = 'mobilenet_v3'
-model_path = os.path.join(models_path, model_name)+'.pth'
-model.load_state_dict(torch.load(model_path))
-
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model.to(device)
-model.eval()
-
-compute_map(model, val_loader, device, iou_threshold=0.5)
-'''
-
 
 
 

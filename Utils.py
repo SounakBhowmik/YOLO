@@ -131,14 +131,6 @@ def compute_map(model, test_loader, device, iou_threshold=0.5):
 
 
 
-
-
-
-
-
-
-
-
 #%% Custom lr_scheduler
 import math
 
