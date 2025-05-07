@@ -1,2 +1,8 @@
+main.py will train the YOLO and save it into the '/models' directory. The user has to load the traiined model from there to run the 
+following modules.
+
+visualize_model_op.py will plot a batch of test images with the detected objects.
+
+
 The titan.ipynb file contains all of the code to run the entire VitoNet pipeline, with test stages.
 A Linux OS is required.
